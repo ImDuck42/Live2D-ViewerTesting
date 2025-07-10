@@ -1189,19 +1189,37 @@ function triggerMotionForHitArea(model, hitAreaName) {
 // Auto-import model if URL ends with ::{modelURL}
 (function autoImportModelFromUrlParam() {
     try {
-        const url = window.location.href;
-        const match = url.match(/::(https?:\/\/[^\s#]+)/);
-        if (match && match[1]) {
-            const modelUrl = match[1];
-            // Remove the ::{modelURL} from the URL bar without reloading
-            const cleanUrl = url.replace(/::https?:\/\/[^\s#]+/, '');
-            window.history.replaceState({}, document.title, cleanUrl);
+        // Check both pathname and hash for ::{modelURL}
+        let modelUrl = null;
+        let cleanPath = null;
+
+        // Check pathname (e.g. /index.html::https://example.com/model.json)
+        const pathMatch = window.location.pathname.match(/::(https?:\/\/.+)$/);
+        if (pathMatch && pathMatch[1]) {
+            modelUrl = pathMatch[1];
+            cleanPath = window.location.pathname.replace(/::https?:\/\/.+$/, '');
+        }
+
+        // If not found in pathname, check hash (e.g. /index.html#::https://example.com/model.json)
+        if (!modelUrl && window.location.hash) {
+            const hashMatch = window.location.hash.match(/::(https?:\/\/.+)$/);
+            if (hashMatch && hashMatch[1]) {
+                modelUrl = hashMatch[1];
+                // Remove ::url from hash
+                window.location.hash = '';
+            }
+        }
+
+        if (modelUrl) {
+            // Clean up the URL bar (remove ::url from path)
+            if (cleanPath !== null) {
+                window.history.replaceState({}, document.title, cleanPath + window.location.search);
+            }
             // Wait for DOMContentLoaded and app initialization, then load the model
             const doAutoLoad = () => {
                 if (typeof loadModel === 'function') {
                     loadModel(modelUrl);
                 } else {
-                    // Fallback: try again shortly if not ready
                     setTimeout(doAutoLoad, 100);
                 }
             };
