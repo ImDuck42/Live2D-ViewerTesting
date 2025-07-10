@@ -1186,53 +1186,53 @@ function triggerMotionForHitArea(model, hitAreaName) {
 // SCRIPT EXECUTION START
 //==============================================================================
 
-// Auto-import model if URL ends with ::{modelURL}
-(function autoImportModelFromUrlParam() {
+// Auto-import model if ?model={modelURL} is present in the URL
+let autoImportModelUrl = null;
+(function checkAutoImportModelParam() {
     try {
-        // Check both pathname and hash for ::{modelURL}
-        let modelUrl = null;
-        let cleanPath = null;
-
-        // Check pathname (e.g. /index.html::https://example.com/model.json)
-        const pathMatch = window.location.pathname.match(/::(https?:\/\/.+)$/);
-        if (pathMatch && pathMatch[1]) {
-            modelUrl = pathMatch[1];
-            cleanPath = window.location.pathname.replace(/::https?:\/\/.+$/, '');
-        }
-
-        // If not found in pathname, check hash (e.g. /index.html#::https://example.com/model.json)
-        if (!modelUrl && window.location.hash) {
-            const hashMatch = window.location.hash.match(/::(https?:\/\/.+)$/);
-            if (hashMatch && hashMatch[1]) {
-                modelUrl = hashMatch[1];
-                // Remove ::url from hash
-                window.location.hash = '';
-            }
-        }
-
-        if (modelUrl) {
-            // Clean up the URL bar (remove ::url from path)
-            if (cleanPath !== null) {
-                window.history.replaceState({}, document.title, cleanPath + window.location.search);
-            }
-            // Wait for DOMContentLoaded and app initialization, then load the model
-            const doAutoLoad = () => {
-                if (typeof loadModel === 'function') {
-                    loadModel(modelUrl);
-                } else {
-                    setTimeout(doAutoLoad, 100);
-                }
-            };
-            doAutoLoad();
+        const params = new URLSearchParams(window.location.search);
+        const modelUrl = params.get('model');
+        if (modelUrl && /^https?:\/\//.test(modelUrl)) {
+            autoImportModelUrl = modelUrl;
         }
     } catch (e) {
-        // Fail silently, don't block app
+        // Fail silently
     }
 })();
 
+function autoImportModelIfNeeded() {
+    if (autoImportModelUrl) {
+        // Remove ?model=... from the URL bar
+        const url = new URL(window.location.href);
+        url.searchParams.delete('model');
+        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+        // Now load the model
+        loadModel(autoImportModelUrl);
+        autoImportModelUrl = null;
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
+    document.addEventListener('DOMContentLoaded', () => {
+        initApp();
+        // Wait for PIXI Application to be ready before importing
+        const waitForApp = () => {
+            if (typeof loadModel === 'function' && window.app) {
+                autoImportModelIfNeeded();
+            } else {
+                setTimeout(waitForApp, 50);
+            }
+        };
+        waitForApp();
+    });
 } else {
-    // DOMContentLoaded has already fired
     initApp();
+    const waitForApp = () => {
+        if (typeof loadModel === 'function' && window.app) {
+            autoImportModelIfNeeded();
+        } else {
+            setTimeout(waitForApp, 50);
+        }
+    };
+    waitForApp();
 }
