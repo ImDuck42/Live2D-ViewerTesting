@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A Live2D model viewer using pixi-live2d-display">
+    <meta name="theme-color" content="#8c5eff">
+    <title>Live2D Viewer</title>
+    <link rel="icon" type="image/svg+xml" href="assets/icon.svg" sizes="any">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/repoexplorer.css">
+    <link rel="stylesheet" href="css/newsmodal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="site-header">
+            <h1 id="site-title-button">Live2D Viewer</h1>
+            <div class="model-imports">
+                <div class="model-loader-group">
+                    <!-- File Explorer Trigger -->
+                    <button id="open-file-explorer-btn" class="header-icon-button" title="Open GitHub File Explorer" aria-controls="file-explorer-modal" aria-expanded="false">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                    <label for="model-url-input" class="sr-only">Model URL</label>
+                    <input type="text" id="model-url-input" placeholder="Enter model (.json/.model3.json) URL...">
+                    <button id="load-url-button" title="Load model from the entered URL">Load URL</button>
+                </div>
+
+                <div class="model-loader-group">
+                    <label for="model-select" class="sr-only">Select Default Model</label>
+                    <select id="model-select">
+                        <option value="" disabled selected>Default Models</option>
+                        <option
+                            value="https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json">
+                            Shizuku (Cubism 2.1)</option>
+                        <option
+                            value="https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json">
+                            Haru (Cubism 4)</option>
+                        <option
+                            value="https://raw.githubusercontent.com/Eikanya/Live2d-model/refs/heads/master/崩坏学园2/bronya/model.json">
+                            Bronya (Cubism 2.1)</option>
+                    </select>
+                    <button id="load-selected-button" title="Load the selected default model">Load Selected</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="canvas-area">
+                <canvas id="live2d-canvas" aria-label="Live2D Model Display Area"></canvas>
+                <div class="loading-overlay" id="loading-overlay" role="status" aria-live="polite">
+                    <div class="spinner" aria-hidden="true"></div>
+                    <div class="loading-text">Loading model...</div>
+                </div>
+                <div id="no-model-message" class="canvas-message">
+                    <i class="fas fa-circle-user" aria-hidden="true"></i>
+                    <p>Select or enter a model URL to display</p>
+                </div>
+            </div>
+
+            <aside class="control-panel" aria-labelledby="control-panel-heading">
+                <h2 id="control-panel-heading" class="sr-only">Model Controls</h2>
+                <div class="control-item">
+                    <input type="checkbox" id="show-hit-areas-checkbox" disabled />
+                    <label for="show-hit-areas-checkbox">Show Hit Areas</label>
+                    <button id="delete-selected-model-button" title="Delete the currently selected model" disabled>
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Expressions</h3>
+                    <div id="expressions-container" class="model-features-container" aria-live="polite">
+                        <p class="no-content-message">No expressions available</p>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Motions</h3>
+                    <div id="motions-container" class="model-features-container" aria-live="polite">
+                        <p class="no-content-message">No motions available</p>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Hit Areas</h3>
+                    <div id="hit-areas-container" class="model-features-container" aria-live="polite">
+                        <p class="no-content-message">No hit areas available</p>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <footer class="site-footer">
+            <p>Powered by <a href="https://github.com/guansss/pixi-live2d-display" target="_blank" rel="noopener noreferrer">pixi-live2d-display</a></p>
+            <p>Model controls: Drag to move, Scroll/Pinch to zoom, Tap to select/interact.</p>
+        </footer>
+
+        <!-- Placeholder for Changelog Modal -->
+        <div id="changelog-placeholder"></div>
+
+        <!-- File Explorer Modal -->
+        <div id="file-explorer-modal" class="file-explorer-modal-container">
+            <button id="file-explorer-close-btn" class="file-explorer-close-btn" title="Close File Explorer">
+                <i class="fas fa-xmark"></i>
+            </button>
+            <div class="file-explorer-header">
+                <h2>GitHub Repository Explorer</h2>
+                <div class="fe-repo-input-container">
+                    <input type="text" id="feOwnerInput" placeholder="GitHub Owner" value="Eikanya">
+                    <span>/</span>
+                    <input type="text" id="feRepoInput" placeholder="Repository Name" value="Live2d-model">
+                    <button id="feLoadRepoBtn">Load Repository</button>
+                </div>
+            </div>
+            <div class="file-explorer-main-content">
+                <div class="fe-content-area-header">
+                    <button id="feUpDirectoryBtn" class="fe-icon-button" title="Up one level" style="display: none;">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <div class="fe-breadcrumbs" id="feMainBreadcrumbs">
+                        <!-- Breadcrumbs will be populated here -->
+                    </div>
+                </div>
+                <div class="fe-content-area-body">
+                    <div class="fe-file-listing-container scrollable" id="feFileListingContainer">
+                        <p class="fe-placeholder-text">Load a repository to see its content.</p>
+                    </div>
+
+                    <div class="fe-file-preview-container" id="feFilePreviewContainer" style="display: none;">
+                        <div class="fe-preview-header">
+                            <h4 id="fePreviewFileName"></h4>
+                            <button id="feClosePreviewBtn" class="fe-icon-button fe-close-btn" title="Close preview">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="fe-preview-content scrollable" id="fePreviewContent">
+                            <!-- File preview content -->
+                        </div>
+                        <div id="fePreviewActions" class="fe-preview-actions"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="file-explorer-footer">
+                <p>Status: <span id="feStatusMessage" aria-live="polite">Idle</span></p>
+            </div>
+        </div>
+
+        <!-- Loader for File Explorer -->
+        <div id="feLoader" class="fe-loader-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading Repository Data...</p>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.8/dist/browser/pixi.min.js"></script>
+    <script src="libs/live2d.js"></script>
+    <script src="libs/live2dcubismcore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js"></script>
+
+    <!-- <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/extra.min.js"></script> -->
+    <!-- Using local modified version for HitAreaFrames styling -->
+    <script src="libs/extra.js"></script>
+
+    <!-- Custom Scripts -->
+    <script src="js/script.js"></script>
+    <script src="js/repoexplorer.js"></script>
+    <script src="js/newsmodal.js"></script>
+</body>
+
+</html>
