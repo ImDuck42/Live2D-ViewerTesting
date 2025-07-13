@@ -13,7 +13,7 @@ const CONFIG = {
     MIN_ZOOM: 0.01,
     MAX_ZOOM: 10.0,
     HIT_AREA_BUTTON_HIGHLIGHT_DURATION: 500, // ms
-    FILE_URL_REVOKE_TIMEOUT: 60000, // ms, for ObjectURLs if used
+    FILE_URL_REVOKE_TIMEOUT: 60000, // ms, for ObjectURLs
     SELECTION_OUTLINE_COLOR: 0x8c5eff,
     SELECTION_OUTLINE_THICKNESS: 2,
     SELECTION_OUTLINE_ALPHA: 0.1, // Note: This alpha is for the line, PIXI might blend it further
@@ -45,6 +45,26 @@ let activePinchTarget = null; // The model being pinched
 // Interaction state flags
 let modelSelectionJustHappenedInPointerDown = false; // Flag to prevent immediate action on tap-select
 let previousCanvasWidth = 0; // For resize handling
+
+//==============================================================================
+// Blocked console.warn patterns and override
+//==============================================================================
+const blockedPatterns = [
+    /\[soundmanager\]/i,
+    /\[motionmanager\(\)\] failed to play audio/i
+];
+
+// Save the original console.warn
+const originalWarn = console.warn;
+
+console.warn = function(...args) {
+    const message = args.join(' ');
+    const shouldBlock = blockedPatterns.some(pattern => pattern.test(message));
+    
+    if (!shouldBlock) {
+        originalWarn.apply(console, args);
+    }
+};
 
 //==============================================================================
 // DOM ELEMENT CACHE
@@ -139,11 +159,33 @@ function initApp() {
     updateUIVisibility(false); // No models initially
     clearAllControlPanelsAndState();
     updateDeleteButtonState();
+
+    // Call checkModelParameter
+    checkModelParameter();
 }
 
 //==============================================================================
 // MODEL LOADING FUNCTIONS
 //==============================================================================
+function checkModelParameter() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const modelURL = urlParams.get('model');
+  
+  if (modelURL) {
+    loadModel(modelURL);
+
+    // Remove the model parameter from URL
+    urlParams.delete('model');
+    
+    // Update the URL without reloading the page
+    const newURL = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({}, '', newURL);
+  } else {
+    // Remove all URL parameters from the URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
 async function loadSelectedModelFromDropdown() {
     if (!DOMElements.modelSelect) {
         console.error("Model select dropdown ('model-select') not found.");
@@ -1185,54 +1227,9 @@ function triggerMotionForHitArea(model, hitAreaName) {
 //==============================================================================
 // SCRIPT EXECUTION START
 //==============================================================================
-
-// Auto-import model if ?model={modelURL} is present in the URL
-let autoImportModelUrl = null;
-(function checkAutoImportModelParam() {
-    try {
-        const params = new URLSearchParams(window.location.search);
-        const modelUrl = params.get('model');
-        if (modelUrl && /^https?:\/\//.test(modelUrl)) {
-            autoImportModelUrl = modelUrl;
-        }
-    } catch (e) {
-        // Fail silently
-    }
-})();
-
-function autoImportModelIfNeeded() {
-    if (autoImportModelUrl) {
-        // Remove ?model=... from the URL bar
-        const url = new URL(window.location.href);
-        url.searchParams.delete('model');
-        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
-        // Now load the model
-        loadModel(autoImportModelUrl);
-        autoImportModelUrl = null;
-    }
-}
-
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initApp();
-        // Wait for PIXI Application to be ready before importing
-        const waitForApp = () => {
-            if (typeof loadModel === 'function' && window.app) {
-                autoImportModelIfNeeded();
-            } else {
-                setTimeout(waitForApp, 50);
-            }
-        };
-        waitForApp();
-    });
+    document.addEventListener('DOMContentLoaded', initApp);
 } else {
+    // DOMContentLoaded has already fired
     initApp();
-    const waitForApp = () => {
-        if (typeof loadModel === 'function' && window.app) {
-            autoImportModelIfNeeded();
-        } else {
-            setTimeout(waitForApp, 50);
-        }
-    };
-    waitForApp();
 }
