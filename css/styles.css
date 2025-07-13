@@ -605,7 +605,8 @@ body.no-scroll {
     }
 
     .canvas-area {
-        height: 40vh;
+        min-height: 40vh;
+        max-height: 60vh;
         flex: 1 1 auto;
     }
 
@@ -686,7 +687,7 @@ body.no-scroll {
     }
 
     .canvas-area {
-        height: 35vh;
+        height: 40vh;
     }
 
     .canvas-message {
