@@ -14,6 +14,9 @@ This project offers a feature-rich experience without the overhead of heavy fram
 It includes a dynamic UI, multi-model support, a GitHub repository explorer for discovering new models, and a "What's New" changelog modal, all wrapped in a clean, responsive design.
 
 ---
+### <p style="color: red;">Since Pixi Live2D Display only works up to Pixi.js 6.5.10, this won't be updatable. If anyone has a version that works with Pixi.js 8.x, it'd be appreciated!</p>
+
+---
 
 ## Live Preview
 
